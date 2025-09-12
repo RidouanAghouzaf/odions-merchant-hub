@@ -9,8 +9,14 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Orders from "./pages/Orders";
 import Users from "./pages/Users";
+import Delivery from "./pages/Delivery";
+import Audiences from "./pages/Audiences";
+import AudienceBuilder from "./pages/AudienceBuilder";
+import AudienceResults from "./pages/AudienceResults";
 import Campaigns from "./pages/Campaigns";
+import Chatbots from "./pages/Chatbots";
 import Analytics from "./pages/Analytics";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,8 +39,14 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/users" element={<Users />} />
+                <Route path="/delivery" element={<Delivery />} />
+                <Route path="/audiences" element={<Audiences />} />
+                <Route path="/audience-builder" element={<AudienceBuilder />} />
+                <Route path="/audience-results" element={<AudienceResults />} />
                 <Route path="/campaigns" element={<Campaigns />} />
+                <Route path="/chatbots" element={<Chatbots />} />
                 <Route path="/analytics" element={<Analytics />} />
+                <Route path="/settings" element={<Settings />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
