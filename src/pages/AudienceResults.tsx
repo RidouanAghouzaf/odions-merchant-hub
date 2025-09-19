@@ -279,13 +279,13 @@ export default function AudienceResults() {
         <CardContent>
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline" className="bg-primary/10">
-              Total Spent > $1000
+              Total Spent {'>'} $1000
             </Badge>
             <Badge variant="outline" className="bg-primary/10">
-              Order Count > 10
+              Order Count {'>'} 10
             </Badge>
             <Badge variant="outline" className="bg-primary/10">
-              Engagement Score > 70%
+              Engagement Score {'>'} 70%
             </Badge>
             <Button variant="ghost" size="sm" onClick={() => navigate("/audience-builder")}>
               <Edit className="h-4 w-4 mr-1" />
