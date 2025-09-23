@@ -1,9 +1,23 @@
 import React, { useState } from "react";
-import { Search, Plus, Users, Filter, Eye, Edit, Trash2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -12,337 +26,417 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Progress } from "@/components/ui/progress";
-import { useNavigate } from "react-router-dom";
+import { Eye, Edit, Trash2, Filter, Plus, Download } from "lucide-react";
+
+type Audience = {
+  id: string;
+  name: string;
+  deliveryCompany: string;
+  store?: string;
+  orderStatus: string;
+  dateRange: { start: string; end: string };
+  minAmount?: number;
+  maxAmount?: number;
+  numberOfClients?: number | "all";
+  products?: string[];
+  purchaseFrequency?: number;
+  city?: string;
+  region?: string;
+  country?: string;
+  includeRefused?: boolean;
+  topLoyal?: boolean;
+  clientsCount: number;
+  createdAt: string;
+};
 
 export default function Audiences() {
+  const [audiences, setAudiences] = useState<Audience[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const navigate = useNavigate();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [viewAudience, setViewAudience] = useState<Audience | null>(null);
 
-  const mockAudiences = [
-    {
-      id: "1",
-      name: "VIP Customers",
-      description: "High-value customers with orders > $1000",
-      totalCustomers: 142,
-      criteria: ["Order Value > $1000", "Lifetime Value > $5000", "Orders Count > 10"],
-      status: "active",
-      lastUpdated: "2024-01-15",
-      avgOrderValue: "$1,247",
-      conversionRate: 8.4,
-      engagement: 92
-    },
-    {
-      id: "2",
-      name: "Inactive Customers",
-      description: "Customers who haven't ordered in 90+ days",
-      totalCustomers: 327,
-      criteria: ["Last Order > 90 days", "Total Orders < 5"],
-      status: "active",
-      lastUpdated: "2024-01-14",
-      avgOrderValue: "$89",
-      conversionRate: 2.1,
-      engagement: 23
-    },
-    {
-      id: "3",
-      name: "New Customers",
-      description: "Customers who joined in the last 30 days",
-      totalCustomers: 89,
-      criteria: ["Registration Date < 30 days", "First Purchase"],
-      status: "active",
-      lastUpdated: "2024-01-15",
-      avgOrderValue: "$156",
-      conversionRate: 12.3,
-      engagement: 67
-    },
-    {
-      id: "4",
-      name: "Mobile Users",
-      description: "Customers who primarily shop via mobile app",
-      totalCustomers: 234,
-      criteria: ["Device Type = Mobile", "App Sessions > 5"],
-      status: "draft",
-      lastUpdated: "2024-01-12",
-      avgOrderValue: "$98",
-      conversionRate: 5.7,
-      engagement: 45
-    },
-    {
-      id: "5",
-      name: "Cart Abandoners",
-      description: "Users with items in cart but no recent purchase",
-      totalCustomers: 156,
-      criteria: ["Cart Value > $50", "No Purchase in 7 days"],
-      status: "active",
-      lastUpdated: "2024-01-13",
-      avgOrderValue: "$167",
-      conversionRate: 15.8,
-      engagement: 34
-    },
-  ];
+  const [formData, setFormData] = useState<Partial<Audience>>({
+    name: "",
+    deliveryCompany: "",
+    store: "",
+    orderStatus: "",
+    dateRange: { start: "", end: "" },
+    minAmount: undefined,
+    maxAmount: undefined,
+    numberOfClients: undefined,
+    products: [],
+    purchaseFrequency: undefined,
+    city: "",
+    region: "",
+    country: "",
+    includeRefused: false,
+    topLoyal: false,
+  });
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      active: { variant: "default" as const, className: "status-success" },
-      draft: { variant: "secondary" as const, className: "status-warning" },
-      archived: { variant: "outline" as const, className: "" },
-    };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
-    return (
-      <Badge variant={config.variant} className={config.className}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    );
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Handle input
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value, type, checked } = e.target;
+    if (type === "checkbox") {
+      setFormData({ ...formData, [name]: checked });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
-  const getEngagementColor = (engagement: number) => {
-    if (engagement >= 70) return "text-success";
-    if (engagement >= 40) return "text-warning";
-    return "text-destructive";
+  // Validate form
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.name) newErrors.name = "Audience name is required";
+    if (!formData.deliveryCompany) newErrors.deliveryCompany = "Delivery company is required";
+    if (!formData.orderStatus) newErrors.orderStatus = "Order status is required";
+    if (!formData.dateRange?.start || !formData.dateRange?.end)
+      newErrors.dateRange = "Date range is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
+
+  // Save Audience
+  const handleSaveAudience = () => {
+    if (validateForm()) {
+      const newAudience: Audience = {
+        id: `AUD-${(audiences.length + 1).toString().padStart(3, "0")}`,
+        name: formData.name!,
+        deliveryCompany: formData.deliveryCompany!,
+        store: formData.store,
+        orderStatus: formData.orderStatus!,
+        dateRange: formData.dateRange!,
+        minAmount: formData.minAmount,
+        maxAmount: formData.maxAmount,
+        numberOfClients: formData.numberOfClients,
+        products: formData.products,
+        purchaseFrequency: formData.purchaseFrequency,
+        city: formData.city,
+        region: formData.region,
+        country: formData.country,
+        includeRefused: formData.includeRefused,
+        topLoyal: formData.topLoyal,
+        clientsCount: Math.floor(Math.random() * 100), // mock
+        createdAt: new Date().toISOString(),
+      };
+      setAudiences([...audiences, newAudience]);
+      setIsDialogOpen(false);
+      setFormData({});
+      setErrors({});
+    }
+  };
+
+  // Filter audiences
+  const filteredAudiences = audiences.filter(
+    (aud) =>
+      aud.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      (statusFilter === "all" || aud.orderStatus === statusFilter)
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Page Header */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Audience Management</h1>
-          <p className="text-muted-foreground">Create and manage customer segments for targeted campaigns</p>
+          <h1 className="text-3xl font-bold text-foreground">Audiences Management</h1>
+          <p className="text-muted-foreground">
+            Create and manage customer audiences
+          </p>
         </div>
-        
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => navigate("/audience-results")}>
-            <Eye className="h-4 w-4 mr-2" />
-            View Results
-          </Button>
-          <Button className="bg-gradient-primary hover:opacity-90" onClick={() => navigate("/audience-builder")}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Audience
-          </Button>
-        </div>
-      </div>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-gradient-primary hover:opacity-90">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Audience
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-2xl rounded-xl shadow-2xl p-6 bg-white max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold text-gray-800">
+                Create New Audience
+              </DialogTitle>
+              <DialogDescription className="text-gray-500">
+                Define all required criteria for this audience.
+              </DialogDescription>
+            </DialogHeader>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">Total Audiences</p>
-                <p className="text-2xl font-bold">{mockAudiences.length}</p>
+            {/* Form */}
+            <div className="space-y-4">
+              <Input
+                placeholder="Audience Name"
+                name="name"
+                value={formData.name || ""}
+                onChange={handleInputChange}
+              />
+              {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
+
+              <select
+                name="deliveryCompany"
+                value={formData.deliveryCompany || ""}
+                onChange={handleInputChange}
+                className="border rounded-md p-2 w-full"
+              >
+                <option value="">Select Delivery Company</option>
+                <option value="Ameex">Ameex</option>
+                <option value="Onesta">Onesta</option>
+                <option value="Ozon Express">Ozon Express</option>
+                <option value="Digilog">Digilog</option>
+              </select>
+              {errors.deliveryCompany && <p className="text-red-500 text-sm">{errors.deliveryCompany}</p>}
+
+              <Input
+                placeholder="Store (optional)"
+                name="store"
+                value={formData.store || ""}
+                onChange={handleInputChange}
+              />
+
+              <select
+                name="orderStatus"
+                value={formData.orderStatus || ""}
+                onChange={handleInputChange}
+                className="border rounded-md p-2 w-full"
+              >
+                <option value="">Select Order Status</option>
+                <option value="delivered">Delivered</option>
+                <option value="refused">Refused</option>
+                <option value="pending">Pending</option>
+                <option value="returned">Returned</option>
+              </select>
+              {errors.orderStatus && <p className="text-red-500 text-sm">{errors.orderStatus}</p>}
+
+              <div className="flex gap-2">
+                <Input
+                  type="date"
+                  name="dateRange.start"
+                  placeholder="Start Date"
+                  value={formData.dateRange?.start || ""}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    dateRange: { ...formData.dateRange!, start: e.target.value }
+                  })}
+                />
+                <Input
+                  type="date"
+                  name="dateRange.end"
+                  placeholder="End Date"
+                  value={formData.dateRange?.end || ""}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    dateRange: { ...formData.dateRange!, end: e.target.value }
+                  })}
+                />
+              </div>
+              {errors.dateRange && <p className="text-red-500 text-sm">{errors.dateRange}</p>}
+
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Min Amount"
+                  name="minAmount"
+                  type="number"
+                  value={formData.minAmount || ""}
+                  onChange={handleInputChange}
+                />
+                <Input
+                  placeholder="Max Amount"
+                  name="maxAmount"
+                  type="number"
+                  value={formData.maxAmount || ""}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <Input
+                placeholder="Number of Clients (all, 50, 100, etc.)"
+                name="numberOfClients"
+                value={formData.numberOfClients?.toString() || ""}
+                onChange={handleInputChange}
+              />
+              <Input
+                placeholder="Products (comma separated)"
+                name="products"
+                value={formData.products?.join(",") || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, products: e.target.value.split(",") })
+                }
+              />
+              <Input
+                placeholder="Purchase Frequency"
+                name="purchaseFrequency"
+                type="number"
+                value={formData.purchaseFrequency || ""}
+                onChange={handleInputChange}
+              />
+              <Input
+                placeholder="City"
+                name="city"
+                value={formData.city || ""}
+                onChange={handleInputChange}
+              />
+              <Input
+                placeholder="Region"
+                name="region"
+                value={formData.region || ""}
+                onChange={handleInputChange}
+              />
+              <Input
+                placeholder="Country"
+                name="country"
+                value={formData.country || ""}
+                onChange={handleInputChange}
+              />
+              <div className="flex gap-4 items-center">
+                <label>
+                  <input
+                    type="checkbox"
+                    name="includeRefused"
+                    checked={formData.includeRefused || false}
+                    onChange={handleInputChange}
+                  /> Include Refused Orders
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="topLoyal"
+                    checked={formData.topLoyal || false}
+                    onChange={handleInputChange}
+                  /> Top Loyal Customers
+                </label>
               </div>
             </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Active Audiences</p>
-              <p className="text-2xl font-bold text-success">{mockAudiences.filter(a => a.status === "active").length}</p>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Customers</p>
-              <p className="text-2xl font-bold">{mockAudiences.reduce((sum, a) => sum + a.totalCustomers, 0).toLocaleString()}</p>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Avg Conversion</p>
-              <p className="text-2xl font-bold text-primary">
-                {(mockAudiences.reduce((sum, a) => sum + a.conversionRate, 0) / mockAudiences.length).toFixed(1)}%
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+
+            <DialogFooter className="flex justify-end mt-6 border-t pt-4 gap-3">
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="px-6">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveAudience}
+                className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white px-6"
+              >
+                Save Audience
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filter Audiences</CardTitle>
-          <CardDescription>Search and filter your customer segments</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search audiences by name or description..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button variant="outline">
-              <Filter className="h-4 w-4 mr-2" />
-              Advanced Filters
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Audiences Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {mockAudiences.map((audience) => (
-          <Card key={audience.id} className="interactive-card hover:shadow-lg transition-all duration-200">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    {audience.name}
-                    {getStatusBadge(audience.status)}
-                  </CardTitle>
-                  <CardDescription className="mt-1">{audience.description}</CardDescription>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      Actions
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem>
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit Audience
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Download className="h-4 w-4 mr-2" />
-                      Export List
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive">
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Audience
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </CardHeader>
-            
-            <CardContent className="space-y-4">
-              {/* Customer Count */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Total Customers</span>
-                <span className="font-bold text-lg">{audience.totalCustomers.toLocaleString()}</span>
-              </div>
-
-              {/* Criteria */}
-              <div>
-                <p className="text-sm font-medium mb-2">Criteria:</p>
-                <div className="flex flex-wrap gap-1">
-                  {audience.criteria.map((criterion, index) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      {criterion}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              {/* Metrics */}
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                <div>
-                  <p className="text-xs text-muted-foreground">Avg Order Value</p>
-                  <p className="font-medium">{audience.avgOrderValue}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Conversion Rate</p>
-                  <p className="font-medium">{audience.conversionRate}%</p>
-                </div>
-              </div>
-
-              {/* Engagement Score */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">Engagement Score</span>
-                  <span className={`font-medium ${getEngagementColor(audience.engagement)}`}>
-                    {audience.engagement}%
-                  </span>
-                </div>
-                <Progress value={audience.engagement} className="h-2" />
-              </div>
-
-              {/* Last Updated */}
-              <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t">
-                <span>Last updated: {new Date(audience.lastUpdated).toLocaleDateString()}</span>
-                <Button size="sm" variant="outline" onClick={() => navigate("/audience-builder")}>
-                  <Edit className="h-3 w-3 mr-1" />
-                  Edit
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="flex gap-2">
+        <Input
+          placeholder="Search Audience..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <select
+          className="border rounded-md p-2"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="all">All Statuses</option>
+          <option value="delivered">Delivered</option>
+          <option value="refused">Refused</option>
+          <option value="pending">Pending</option>
+          <option value="returned">Returned</option>
+        </select>
+        <Button variant="outline" size="sm">
+          <Filter className="h-4 w-4 mr-2" /> Filter
+        </Button>
       </div>
 
-      {/* Quick Actions */}
+      {/* Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common audience operations and tools</CardDescription>
+          <CardTitle>Audience List</CardTitle>
+          <CardDescription>
+            List of all customer audiences
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => navigate("/audience-builder")}>
-              <Plus className="h-5 w-5" />
-              Create New Audience
-            </Button>
-            
-            <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => navigate("/audience-results")}>
-              <Eye className="h-5 w-5" />
-              View All Results
-            </Button>
-            
-            <Button variant="outline" className="h-20 flex-col gap-2">
-              <Download className="h-5 w-5" />
-              Export All Data
-            </Button>
-          </div>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Delivery Company</TableHead>
+                <TableHead>Clients Count</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredAudiences.map((aud) => (
+                <TableRow key={aud.id}>
+                  <TableCell>{aud.name}</TableCell>
+                  <TableCell>{aud.deliveryCompany}</TableCell>
+                  <TableCell>{aud.clientsCount}</TableCell>
+                  <TableCell>{new Date(aud.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setViewAudience(aud)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
+
+      {/* View Audience Modal */}
+      <Dialog open={!!viewAudience} onOpenChange={() => setViewAudience(null)}>
+        <DialogContent className="sm:max-w-3xl rounded-xl shadow-2xl p-6 bg-white max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-gray-800">
+              {viewAudience?.name}
+            </DialogTitle>
+            <DialogDescription className="text-gray-500">
+              Audience Details
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p>
+              <strong>Delivery Company:</strong> {viewAudience?.deliveryCompany}
+            </p>
+            <p>
+              <strong>Order Status:</strong> {viewAudience?.orderStatus}
+            </p>
+            <p>
+              <strong>Clients Count:</strong> {viewAudience?.clientsCount}
+            </p>
+            <p>
+              <strong>Date Range:</strong> {viewAudience?.dateRange.start} - {viewAudience?.dateRange.end}
+            </p>
+          </div>
+          <DialogFooter className="flex justify-end mt-6 border-t pt-4">
+            <Button variant="outline" onClick={() => setViewAudience(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

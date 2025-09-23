@@ -13,7 +13,7 @@ import Delivery from "./pages/Delivery";
 import Audiences from "./pages/Audiences";
 import AudienceBuilder from "./pages/AudienceBuilder";
 import AudienceResults from "./pages/AudienceResults";
-import Campaigns from "./pages/Campaigns";
+import Campaigns from "./pages/WhatsappCampaigns";
 import Chatbots from "./pages/Chatbots";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
