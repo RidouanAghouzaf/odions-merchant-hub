@@ -1,8 +1,8 @@
-import React, { useState } from "react";
-import { Plus, Edit, Trash2, Eye, UserCheck, UserX, Building } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -34,86 +34,117 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 
 export default function UsersTenants() {
+  // ===== States =====
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [users, setUsers] = useState([
-    { id: "1", name: "John Doe", email: "john@acmestore.com", role: "admin", status: "active", tenant: "Acme Store", lastLogin: "2024-01-15", ordersCount: 0 },
-    { id: "2", name: "Jane Smith", email: "jane@fashionhub.com", role: "manager", status: "active", tenant: "Fashion Hub", lastLogin: "2024-01-14", ordersCount: 156 },
-  ]);
-  const [tenants, setTenants] = useState([
-    { id: "1", name: "Acme Store", subscription: "Basic", status: "active" },
-    { id: "2", name: "Fashion Hub", subscription: "Pro", status: "active" },
-  ]);
+  const [users, setUsers] = useState([]);
+  const [tenants, setTenants] = useState([]);
 
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [isTenantDialogOpen, setIsTenantDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [editingTenant, setEditingTenant] = useState(null);
 
-  // ======= Helpers =======
-  const getInitials = (name: string) => name.split(" ").map(n => n[0]).join("").toUpperCase();
-  const getStatusBadge = (status: string) => (
-    <Badge variant={status === "active" ? "default" : "outline"}>{status}</Badge>
-  );
-  const getRoleBadge = (role: string) => (
-    <Badge variant="outline">{role}</Badge>
-  );
+  // ===== Fetch Data from Backend =====
+  useEffect(() => {
+    fetchTenants();
+    fetchUsers();
+  }, []);
 
-  // ======= User Actions =======
-  const handleAddUser = (user) => {
-    if (editingUser) {
-      setUsers(users.map(u => u.id === editingUser.id ? { ...user, id: editingUser.id } : u));
+  const fetchTenants = async () => {
+    const res = await fetch("/api/tenants");
+    const data = await res.json();
+    setTenants(data);
+  };
+
+  const fetchUsers = async () => {
+    const res = await fetch("/api/users");
+    const data = await res.json();
+    setUsers(data);
+  };
+
+  // ===== Helpers =====
+  const getInitials = (name) => name.split(" ").map(n => n[0]).join("").toUpperCase();
+  const getStatusBadge = (status) => <Badge variant={status === "ACTIVE" ? "default" : "outline"}>{status}</Badge>;
+  const getRoleBadge = (role) => <Badge variant="outline">{role}</Badge>;
+
+  // ===== User Actions =====
+  const handleAddUser = async (user) => {
+    try {
+      const payload = {
+        ...user,
+        tenant: { id: tenants.find(t => t.name === user.tenant)?.id } // Send tenant id
+      };
+      const res = await fetch(user.id ? `/api/users/${user.id}` : "/api/users", {
+        method: user.id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const savedUser = await res.json();
+      setUsers(user.id 
+        ? users.map(u => u.id === savedUser.id ? savedUser : u)
+        : [...users, savedUser]
+      );
       setEditingUser(null);
-    } else {
-      setUsers([...users, { ...user, id: Date.now().toString() }]);
+      setIsUserDialogOpen(false);
+    } catch (err) {
+      console.error("Error saving user:", err);
     }
-    setIsUserDialogOpen(false);
   };
 
-  const handleEditUser = (user) => {
-    setEditingUser(user);
-    setIsUserDialogOpen(true);
+  const handleDeleteUser = async (id) => {
+    try {
+      await fetch(`/api/users/${id}`, { method: "DELETE" });
+      setUsers(users.filter(u => u.id !== id));
+    } catch (err) {
+      console.error("Error deleting user:", err);
+    }
   };
 
-  const handleDeleteUser = (id) => {
-    setUsers(users.filter(u => u.id !== id));
-  };
-
-  // ======= Tenant Actions =======
-  const handleAddTenant = (tenant) => {
-    if (editingTenant) {
-      setTenants(tenants.map(t => t.id === editingTenant.id ? { ...tenant, id: editingTenant.id } : t));
+  // ===== Tenant Actions =====
+  const handleAddTenant = async (tenant) => {
+    try {
+      const res = await fetch(tenant.id ? `/api/tenants/${tenant.id}` : "/api/tenants", {
+        method: tenant.id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(tenant)
+      });
+      const savedTenant = await res.json();
+      setTenants(tenant.id 
+        ? tenants.map(t => t.id === savedTenant.id ? savedTenant : t)
+        : [...tenants, savedTenant]
+      );
       setEditingTenant(null);
-    } else {
-      setTenants([...tenants, { ...tenant, id: Date.now().toString() }]);
+      setIsTenantDialogOpen(false);
+    } catch (err) {
+      console.error("Error saving tenant:", err);
     }
-    setIsTenantDialogOpen(false);
   };
 
-  const handleEditTenant = (tenant) => {
-    setEditingTenant(tenant);
-    setIsTenantDialogOpen(true);
+  const handleDeleteTenant = async (id) => {
+    try {
+      await fetch(`/api/tenants/${id}`, { method: "DELETE" });
+      setTenants(tenants.filter(t => t.id !== id));
+    } catch (err) {
+      console.error("Error deleting tenant:", err);
+    }
   };
 
-  const handleDeleteTenant = (id) => {
-    setTenants(tenants.filter(t => t.id !== id));
-  };
-
-  // ======= Filtered Users =======
+  // ===== Filtered Users =====
   const filteredUsers = users.filter(u => {
     const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === "all" || u.role === roleFilter;
-    const matchesStatus = statusFilter === "all" || u.status === statusFilter;
+    const matchesRole = roleFilter === "all" || u.role.toLowerCase() === roleFilter;
+    const matchesStatus = statusFilter === "all" || u.status.toLowerCase() === statusFilter;
     return matchesSearch && matchesRole && matchesStatus;
   });
 
+  // ===== UI =====
   return (
     <div className="space-y-6">
-      {/* ===== Users & Tenants Header ===== */}
+      {/* Header & Actions */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Users & Tenants</h1>
         <div className="flex gap-2">
@@ -136,11 +167,9 @@ export default function UsersTenants() {
         </div>
       </div>
 
-      {/* ===== Search & Filters ===== */}
+      {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle>Filter Users</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Filter Users</CardTitle></CardHeader>
         <CardContent className="flex gap-4">
           <Input placeholder="Search..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           <Select value={roleFilter} onValueChange={setRoleFilter}>
@@ -164,11 +193,9 @@ export default function UsersTenants() {
         </CardContent>
       </Card>
 
-      {/* ===== Users Table ===== */}
+      {/* Users Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Users</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Users</CardTitle></CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
@@ -189,16 +216,14 @@ export default function UsersTenants() {
                       {u.name}
                     </div>
                   </TableCell>
-                  <TableCell>{u.tenant}</TableCell>
+                  <TableCell>{u.tenant?.name}</TableCell>
                   <TableCell>{getRoleBadge(u.role)}</TableCell>
                   <TableCell>{getStatusBadge(u.status)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">Actions</Button>
-                      </DropdownMenuTrigger>
+                      <DropdownMenuTrigger asChild><Button variant="ghost" size="sm">Actions</Button></DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => handleEditUser(u)}><Edit /> Edit</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setEditingUser(u); setIsUserDialogOpen(true); }}><Edit /> Edit</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDeleteUser(u.id)} className="text-destructive"><Trash2 /> Delete</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -210,11 +235,9 @@ export default function UsersTenants() {
         </CardContent>
       </Card>
 
-      {/* ===== Tenants Table ===== */}
+      {/* Tenants Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Tenants</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Tenants</CardTitle></CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
@@ -233,11 +256,9 @@ export default function UsersTenants() {
                   <TableCell>{getStatusBadge(t.status)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">Actions</Button>
-                      </DropdownMenuTrigger>
+                      <DropdownMenuTrigger asChild><Button variant="ghost" size="sm">Actions</Button></DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => handleEditTenant(t)}><Edit /> Edit</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setEditingTenant(t); setIsTenantDialogOpen(true); }}><Edit /> Edit</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDeleteTenant(t.id)} className="text-destructive"><Trash2 /> Delete</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -252,24 +273,22 @@ export default function UsersTenants() {
   );
 }
 
-// ======= User Form Component =======
+// ===== User Form =====
 function UserForm({ onSubmit, initialData, onCancel, tenants }) {
   const [name, setName] = useState(initialData?.name || "");
   const [email, setEmail] = useState(initialData?.email || "");
   const [role, setRole] = useState(initialData?.role || "user");
-  const [tenant, setTenant] = useState(initialData?.tenant || tenants[0]?.name || "");
-  const [status, setStatus] = useState(initialData?.status || "active");
+  const [tenant, setTenant] = useState(initialData?.tenant?.name || tenants[0]?.name || "");
+  const [status, setStatus] = useState(initialData?.status || "ACTIVE");
 
   const handleSubmit = () => {
     if (!name || !email) return alert("Please fill all fields");
-    onSubmit({ name, email, role, tenant, status, lastLogin: "Never", ordersCount: 0 });
+    onSubmit({ id: initialData?.id, name, email, role, tenant, status });
   };
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>{initialData ? "Edit User" : "Add User"}</DialogTitle>
-      </DialogHeader>
+      <DialogHeader><DialogTitle>{initialData ? "Edit User" : "Add User"}</DialogTitle></DialogHeader>
       <div className="grid gap-4 py-4">
         <Input placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} />
         <Input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
@@ -290,9 +309,9 @@ function UserForm({ onSubmit, initialData, onCancel, tenants }) {
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="ACTIVE">Active</SelectItem>
+            <SelectItem value="INACTIVE">Inactive</SelectItem>
+            <SelectItem value="PENDING">Pending</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -304,22 +323,20 @@ function UserForm({ onSubmit, initialData, onCancel, tenants }) {
   );
 }
 
-// ======= Tenant Form Component =======
+// ===== Tenant Form =====
 function TenantForm({ onSubmit, initialData, onCancel }) {
   const [name, setName] = useState(initialData?.name || "");
   const [subscription, setSubscription] = useState(initialData?.subscription || "Basic");
-  const [status, setStatus] = useState(initialData?.status || "active");
+  const [status, setStatus] = useState(initialData?.status || "ACTIVE");
 
   const handleSubmit = () => {
     if (!name) return alert("Please fill tenant name");
-    onSubmit({ name, subscription, status });
+    onSubmit({ id: initialData?.id, name, subscription, status });
   };
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>{initialData ? "Edit Tenant" : "Add Tenant"}</DialogTitle>
-      </DialogHeader>
+      <DialogHeader><DialogTitle>{initialData ? "Edit Tenant" : "Add Tenant"}</DialogTitle></DialogHeader>
       <div className="grid gap-4 py-4">
         <Input placeholder="Tenant Name" value={name} onChange={e => setName(e.target.value)} />
         <Select value={subscription} onValueChange={setSubscription}>
@@ -333,8 +350,8 @@ function TenantForm({ onSubmit, initialData, onCancel }) {
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="ACTIVE">Active</SelectItem>
+            <SelectItem value="INACTIVE">Inactive</SelectItem>
           </SelectContent>
         </Select>
       </div>
