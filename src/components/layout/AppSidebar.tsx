@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { useAuth } from "@/auth/AuthProvider";
+
 import {
   LayoutDashboard,
   Users,
@@ -83,6 +85,7 @@ export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
   const isCollapsed = state === "collapsed";
+  const {logout} =useAuth();
 
   const isActive = (path: string) => {
     if (path === "/") return currentPath === "/";
@@ -160,10 +163,20 @@ export function AppSidebar() {
                 className="h-10 text-destructive hover:bg-destructive/10"
                 tooltip={isCollapsed ? "Logout" : undefined}
               >
-                <button className="w-full justify-start">
-                  <LogOut className="h-4 w-4 flex-shrink-0" />
-                  {!isCollapsed && <span className="ml-3 font-medium">Logout</span>}
-                </button>
+               <button
+  className="w-full justify-start"
+  onClick={() => {
+    // STEP 3: Logout logic
+    localStorage.removeItem("token");   // remove the token (or session key)
+    localStorage.removeItem("user");    // remove user info if stored
+
+    // Redirect to login page
+    window.location.href = "/login";
+  }}
+>
+  <LogOut className="h-4 w-4 flex-shrink-0" />
+  {!isCollapsed && <span className="ml-3 font-medium">Logout</span>}
+</button>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

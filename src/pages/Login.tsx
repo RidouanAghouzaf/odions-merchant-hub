@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+// src/pages/Login.tsx
+import React, { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/auth/AuthProvider";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -14,38 +16,67 @@ export default function Login() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    rememberMe: false
+    rememberMe: false,
   });
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const { login, user, isAuthenticated } = useAuth();
+
+  // If user is already logged in, redirect them to their dashboard
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === "admin") navigate("/users", { replace: true });
+      else navigate("/orders", { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const loggedUser = await login(formData.email, formData.password); // uses AuthProvider.login
       setIsLoading(false);
+
       toast({
         title: "Login successful",
-        description: "Welcome back to ODIONS!",
+        description: `Welcome back, ${loggedUser.role}!`,
       });
-      navigate("/");
-    }, 1500);
+
+      // redirect to where the user initially wanted to go, if any
+      const state = (location.state as any) || {};
+      const from = state.from?.pathname;
+
+      if (from) {
+        navigate(from);
+        return;
+      }
+
+      // otherwise go by role
+      if (loggedUser.role === "admin") navigate("/users");
+      else navigate("/orders");
+    } catch (err: any) {
+      setIsLoading(false);
+      toast({
+        title: "Login failed",
+        description: err?.message || "Please check your credentials",
+      });
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-subtle p-4">
       <div className="w-full max-w-md animate-fade-in">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-2xl mb-4 animate-float">
             <span className="text-white font-bold text-2xl">O</span>
@@ -54,18 +85,14 @@ export default function Login() {
           <p className="text-muted-foreground">E-commerce Management Platform</p>
         </div>
 
-        {/* Login Card */}
         <Card className="glass border-card-border/50">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Welcome back</CardTitle>
-            <CardDescription>
-              Sign in to your account to access your dashboard
-            </CardDescription>
+            <CardDescription>Sign in to your account to access your dashboard</CardDescription>
           </CardHeader>
-          
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email Field */}
               <div className="space-y-2">
                 <Label htmlFor="email">Email address</Label>
                 <div className="relative">
@@ -83,7 +110,6 @@ export default function Login() {
                 </div>
               </div>
 
-              {/* Password Field */}
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
@@ -108,48 +134,32 @@ export default function Login() {
                 </div>
               </div>
 
-              {/* Remember Me & Forgot Password */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="rememberMe"
                     name="rememberMe"
                     checked={formData.rememberMe}
-                    onCheckedChange={(checked) => 
-                      setFormData(prev => ({ ...prev, rememberMe: checked as boolean }))
-                    }
+                    onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, rememberMe: checked as boolean }))}
                   />
                   <Label htmlFor="rememberMe" className="text-sm">
                     Remember me
                   </Label>
                 </div>
-                <button
-                  type="button"
-                  className="text-sm text-primary hover:underline"
-                  onClick={() => toast({ title: "Password reset link sent to your email" })}
-                >
+                <button type="button" className="text-sm text-primary hover:underline" onClick={() => toast({ title: "Password reset link sent to your email" })}>
                   Forgot password?
                 </button>
               </div>
 
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                className="w-full bg-gradient-primary hover:opacity-90 h-11"
-                disabled={isLoading}
-              >
+              <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90 h-11" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
 
-            {/* Register Link */}
             <div className="text-center mt-6 pt-6 border-t border-border">
               <p className="text-sm text-muted-foreground">
                 Don't have an account?{" "}
-                <button
-                  onClick={() => navigate("/register")}
-                  className="text-primary hover:underline font-medium"
-                >
+                <button onClick={() => navigate("/register")} className="text-primary hover:underline font-medium">
                   Sign up here
                 </button>
               </p>
@@ -157,7 +167,6 @@ export default function Login() {
           </CardContent>
         </Card>
 
-        {/* Demo Credentials */}
         <Card className="mt-4 bg-muted/50 border-dashed">
           <CardContent className="pt-4">
             <p className="text-xs text-muted-foreground text-center">
