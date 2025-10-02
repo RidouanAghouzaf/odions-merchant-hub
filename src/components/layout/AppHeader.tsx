@@ -1,5 +1,5 @@
 import React from "react";
-import { Bell, Search, Sun, Moon, User } from "lucide-react";
+import { Bell, Search, Sun, Moon, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,6 +13,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useAuth } from "@/auth/AuthProvider";
 
 interface AppHeaderProps {
   isDarkMode: boolean;
@@ -20,6 +21,8 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ isDarkMode, toggleDarkMode }: AppHeaderProps) {
+  const { user, logout } = useAuth(); // 👈 get current user + logout
+
   return (
     <header className="h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="flex h-full items-center gap-4 px-6">
@@ -44,11 +47,7 @@ export function AppHeader({ isDarkMode, toggleDarkMode }: AppHeaderProps) {
             onClick={toggleDarkMode}
             className="h-9 w-9 p-0"
           >
-            {isDarkMode ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
+            {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
 
           {/* Notifications */}
@@ -64,20 +63,26 @@ export function AppHeader({ isDarkMode, toggleDarkMode }: AppHeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-9 px-2 gap-2">
                 <Avatar className="h-7 w-7">
-                  <AvatarFallback className="text-xs">JD</AvatarFallback>
+                  <AvatarFallback className="text-xs">
+                    {user?.email.charAt(0).toUpperCase() || "U"}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="hidden sm:block text-left">
-                  <p className="text-sm font-medium">John Doe</p>
-                  <p className="text-xs text-muted-foreground">Admin</p>
+                  <p className="text-sm font-medium">{user?.email || "Guest"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {user?.role || "No role"}
+                  </p>
                 </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">John Doe</p>
+                  <p className="text-sm font-medium leading-none">
+                    {user?.email || "Guest"}
+                  </p>
                   <p className="text-xs leading-none text-muted-foreground">
-                    john@acmestore.com
+                    {user?.role ? `${user.role} account` : "Not logged in"}
                   </p>
                 </div>
               </DropdownMenuLabel>
@@ -89,8 +94,12 @@ export function AppHeader({ isDarkMode, toggleDarkMode }: AppHeaderProps) {
               <DropdownMenuItem>Settings</DropdownMenuItem>
               <DropdownMenuItem>Support</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
-                Log out
+              <DropdownMenuItem
+                onClick={logout} // 👈 logout from AuthProvider
+                className="text-destructive cursor-pointer"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
