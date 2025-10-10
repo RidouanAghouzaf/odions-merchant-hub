@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import AiIntelligence from "@/pages/AiIntelligence";
 
 const navigationItems = [
   {
@@ -66,6 +67,11 @@ const navigationItems = [
   {
     title: "Chatbots",
     url: "/chatbots",
+    icon: Bot,
+  },
+  {
+    title: "Ai Intelligence",
+    url: "/ai-intelligence",
     icon: Bot,
   },
   {

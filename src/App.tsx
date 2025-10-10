@@ -4,6 +4,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Orders from "./pages/Orders";
+import AiIntelligence from "./pages/AiIntelligence";
 import Users from "./pages/Users";
 import Delivery from "./pages/Delivery";
 import Audiences from "./pages/Audiences";
@@ -39,6 +40,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/orders" element={<Orders />} />
+                <Route path="/ai-intelligence" element={<AiIntelligence />} />
                 <Route path="/users" element={<Users />} />
                 <Route path="/delivery" element={<Delivery />} />
                 <Route path="/audiences" element={<Audiences />} />
