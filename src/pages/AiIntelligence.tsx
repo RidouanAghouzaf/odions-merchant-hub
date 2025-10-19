@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BarChart3, Brain, Smile, DollarSign, AlertCircle, Gift } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { ReferenceLine } from "recharts";
+import { Loader2 } from "lucide-react";
 
 const API_URL = "http://127.0.0.1:8000"; // your FastAPI backend
 const COLORS = ["#4ade80", "#60a5fa", "#fbbf24"];
@@ -19,6 +21,12 @@ export default function AiIntelligence() {
   const [clvData, setClvData] = useState<any>(null);
   const [churnData, setChurnData] = useState<any>(null);
   const [recommendationData, setRecommendationData] = useState<any>(null);
+  const [dateFrom, setDateFrom] = useState("");
+const [dateTo, setDateTo] = useState("");
+const [clientType, setClientType] = useState("all");
+const [minSpent, setMinSpent] = useState("");
+const [minOrders, setMinOrders] = useState("");
+
 
   // ----------------- Regenerate CSV Data -----------------
   const regenerateData = async () => {
@@ -45,21 +53,32 @@ export default function AiIntelligence() {
 
   // ----------------- Segmentation -----------------
   const fetchSegmentation = async () => {
-  setLoading(true);
-  try {
-    const res = await fetch(`${API_URL}/api/ai/segmentation`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tenant_id: 1, n_clusters: 3 }),
-    });
-    const data = await res.json();
-    setSegmentationData(data); // ✅ store full object now
-  } catch (err) {
-    console.error(err);
-    alert("Erreur lors de la segmentation");
-  }
-  setLoading(false);
-};
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/ai/segmentation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_id: 1,
+          n_clusters: 3,
+          filters: {
+            date_from: dateFrom || null,
+            date_to: dateTo || null,
+            client_type: clientType !== "all" ? clientType : null,
+            min_spent: minSpent ? parseFloat(minSpent) : null,
+            min_orders: minOrders ? parseInt(minOrders) : null,
+          },
+        }),
+      });
+      const data = await res.json();
+      setSegmentationData(data);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de la segmentation");
+    }
+    setLoading(false);
+  };
+  
 
   // ----------------- Prediction -----------------
   const fetchPrediction = async () => {
@@ -190,8 +209,7 @@ export default function AiIntelligence() {
         </TabsList>
 
        {/* SEGMENTATION */}
-{/* SEGMENTATION */}
-<TabsContent value="segmentation">
+       <TabsContent value="segmentation">
   <Card>
     <CardContent className="p-6 space-y-6">
       <div className="flex items-center gap-2">
@@ -203,10 +221,64 @@ export default function AiIntelligence() {
         Cette analyse divise les clients en groupes selon leurs comportements d’achat, fréquence, et valeur.
       </p>
 
+      {/* 🔍 Advanced Filters */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="text-sm text-gray-600">Date début</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="w-full border rounded px-2 py-1"
+          />
+        </div>
+        <div>
+          <label className="text-sm text-gray-600">Date fin</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="w-full border rounded px-2 py-1"
+          />
+        </div>
+        <div>
+          <label className="text-sm text-gray-600">Type de client</label>
+          <select
+            value={clientType}
+            onChange={(e) => setClientType(e.target.value)}
+            className="w-full border rounded px-2 py-1"
+          >
+            <option value="all">Tous</option>
+            <option value="vip">VIP</option>
+            <option value="frequent">Fréquent</option>
+            <option value="new">Nouveau</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-sm text-gray-600">Dépense min. (DH)</label>
+          <input
+            type="number"
+            value={minSpent}
+            onChange={(e) => setMinSpent(e.target.value)}
+            className="w-full border rounded px-2 py-1"
+          />
+        </div>
+        <div>
+          <label className="text-sm text-gray-600">Commandes min.</label>
+          <input
+            type="number"
+            value={minOrders}
+            onChange={(e) => setMinOrders(e.target.value)}
+            className="w-full border rounded px-2 py-1"
+          />
+        </div>
+      </div>
+
       <Button onClick={fetchSegmentation} disabled={loading}>
         {loading ? "Analyse en cours..." : "Lancer la Segmentation"}
       </Button>
 
+      {/* ✅ Rest of your existing code stays unchanged below */}
       {segmentationData && (
         <>
           {/* SUMMARY STATS */}
@@ -314,87 +386,169 @@ export default function AiIntelligence() {
 
 
 
-        {/* PREDICTION */}
+{/* 🔮 PREDICTION SECTION */}
 <TabsContent value="prediction">
-  <Card>
-    <CardContent className="p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <Brain className="text-purple-500" />
-        <h2 className="text-xl font-semibold">Prédiction du Comportement d’Achat</h2>
+  <Card className="shadow-md border">
+    <CardContent className="p-6 space-y-6">
+      {/* 🧠 Header */}
+      <div className="flex items-center gap-3">
+        <Brain className="text-purple-600 w-6 h-6" />
+        <h2 className="text-xl font-bold text-gray-800">
+          Prédiction du Comportement d’Achat
+        </h2>
       </div>
 
-      <Button onClick={fetchPrediction} disabled={loading}>
-        {loading ? "Chargement..." : "Lancer la Prédiction"}
-      </Button>
+      {/* 🚀 Launch Button */}
+      <Button
+  onClick={fetchPrediction}
+  disabled={loading}
+  className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300
+    ${loading ? "bg-purple-300 cursor-not-allowed" : "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600"}
+    text-white font-semibold shadow-lg`}
+>
+  {loading ? (
+    <>
+      <Loader2 className="animate-spin h-5 w-5" />
+      Chargement...
+    </>
+  ) : (
+    <>
+      <Brain className="h-5 w-5" />
+      Lancer la Prédiction
+    </>
+  )}
+</Button>
 
-      {predictionData && predictionData.length > 0 && (
-        <>
-          {/* CALCUL MOYENNE */}
-          {(() => {
-            const avgPurchase =
-              predictionData.reduce((sum: number, p: any) => sum + p.predicted_next_purchase, 0) /
-              predictionData.length;
-            return (
-              <>
-                {/* BAR CHART */}
-                <div className="mt-6">
-                  <h3 className="text-gray-700 font-semibold mb-2">Montant Prévisionnel par Client</h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={predictionData}>
-                      <XAxis dataKey="client_id" />
-                      <YAxis />
-                      <Tooltip formatter={(value: any) => `${value} DH`} />
-                      <Bar dataKey="predicted_next_purchase" fill="#a78bfa" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
 
-                {/* TOP CLIENTS */}
-                <div className="mt-6">
-                  <h3 className="text-gray-700 font-semibold mb-2">Top 5 Clients à Cibler</h3>
-                  <ul className="list-disc pl-5 space-y-1">
-                    {predictionData
-                      .sort((a: any, b: any) => b.predicted_next_purchase - a.predicted_next_purchase)
-                      .slice(0, 5)
-                      .map((p: any) => (
-                        <li key={p.client_id}>
-                          Client #{p.client_id} – Prévision : {p.predicted_next_purchase} DH
-                        </li>
-                      ))}
-                  </ul>
-                </div>
+      {/* ✅ Prediction Data Display */}
+      {predictionData && predictionData.length > 0 && (() => {
+        const avgPurchase =
+          predictionData.reduce((sum, p) => sum + p.predicted_next_purchase, 0) /
+          predictionData.length;
 
-                {/* TABLEAU AMÉLIORÉ */}
-                <div className="mt-6 overflow-x-auto">
-                  <table className="w-full border-collapse border">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="p-2 border">Client</th>
-                        <th className="p-2 border">Montant Prochain Achat</th>
-                        <th className="p-2 border">Comparé à la Moyenne</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {predictionData.map((p: any) => (
-                        <tr key={p.client_id} className={p.predicted_next_purchase >= avgPurchase ? "bg-green-50" : "bg-red-50"}>
-                          <td className="border p-2">{p.client_id}</td>
-                          <td className="border p-2">{p.predicted_next_purchase} DH</td>
-                          <td className="border p-2">
-                            {p.predicted_next_purchase >= avgPurchase ? "Au-dessus de la moyenne" : "En dessous de la moyenne"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            );
-          })()}
-        </>
-      )}
+        const topClients = [...predictionData]
+          .sort((a, b) => b.predicted_next_purchase - a.predicted_next_purchase)
+          .slice(0, 5);
+
+        return (
+          <>
+            {/* 📊 Stats Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+              <div className="bg-purple-50 p-4 rounded-lg shadow-sm">
+                <p className="text-sm text-purple-700 font-medium">Clients Prédits</p>
+                <p className="text-3xl font-bold text-purple-600">{predictionData.length}</p>
+              </div>
+              <div className="bg-yellow-50 p-4 rounded-lg shadow-sm">
+                <p className="text-sm text-yellow-700 font-medium">Dépense Moyenne</p>
+                <p className="text-3xl font-bold text-yellow-600">{avgPurchase.toFixed(2)} DH</p>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg shadow-sm">
+                <p className="text-sm text-green-700 font-medium">Top Client</p>
+                <p className="text-3xl font-bold text-green-600">#{topClients[0].client_id}</p>
+              </div>
+            </div>
+
+            {/* 📈 Bar Chart */}
+            <div className="mt-10">
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                Montants Prévus par Client
+              </h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={predictionData}>
+                  <XAxis dataKey="client_id" />
+                  <YAxis />
+                  <Tooltip formatter={(v) => `${v} DH`} />
+                  <Legend />
+                  <Bar dataKey="predicted_next_purchase" fill="#a78bfa" name="Prédiction" />
+                  {/* Average Line */}
+                  <ReferenceLine y={avgPurchase} stroke="#8884d8" strokeDasharray="3 3" label="Moyenne" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* 🏆 Top Clients Cards */}
+            <div className="mt-10">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4">Top 5 Clients Ciblés</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {topClients.map((client) => (
+                  <div
+                    key={client.client_id}
+                    className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition"
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-semibold text-purple-600">Client #{client.client_id}</h4>
+                      <span
+                        className={`text-xs font-medium px-2 py-1 rounded-full ${
+                          client.predicted_next_purchase >= avgPurchase
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {client.predicted_next_purchase >= avgPurchase
+                          ? "Au-dessus de la Moyenne"
+                          : "En dessous"}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Montant Prédit :{" "}
+                      <span className="font-bold text-purple-500">
+                        {client.predicted_next_purchase.toFixed(2)} DH
+                      </span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 📋 Detailed Table */}
+            <div className="mt-10 overflow-x-auto">
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">Détails Prédictifs</h3>
+              <table className="w-full border-collapse border rounded-md overflow-hidden">
+                <thead>
+                  <tr className="bg-gray-100 text-sm text-gray-700">
+                    <th className="p-3 border">Client</th>
+                    <th className="p-3 border">Montant Prédit</th>
+                    <th className="p-3 border">Comparaison Moyenne</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {predictionData.map((p) => (
+                    <tr
+                      key={p.client_id}
+                      className={
+                        p.predicted_next_purchase >= avgPurchase
+                          ? "bg-green-50"
+                          : "bg-red-50"
+                      }
+                    >
+                      <td className="p-2 border font-medium">#{p.client_id}</td>
+                      <td className="p-2 border">{p.predicted_next_purchase.toFixed(2)} DH</td>
+                      <td className="p-2 border">
+                        <span
+                          className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
+                            p.predicted_next_purchase >= avgPurchase
+                              ? "bg-green-200 text-green-800"
+                              : "bg-red-200 text-red-800"
+                          }`}
+                        >
+                          {p.predicted_next_purchase >= avgPurchase
+                            ? "Au-dessus"
+                            : "En dessous"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        );
+      })()}
     </CardContent>
   </Card>
 </TabsContent>
+
+
 
 
         {/* SENTIMENT */}
