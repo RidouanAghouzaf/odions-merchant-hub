@@ -16,6 +16,7 @@ import Orders from "./pages/Orders";
 import Delivery from "./pages/Delivery";
 import Analytics from "./pages/Analytics";
 import UsersTenants from "./pages/Users";
+import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
@@ -113,10 +114,10 @@ const App = () => (
                 }
               />
               <Route
-                path="/users"
+                path="/admin"
                 element={
                   <AppLayout>
-                    <UsersTenants />
+                    <Admin />
                   </AppLayout>
                 }
               />

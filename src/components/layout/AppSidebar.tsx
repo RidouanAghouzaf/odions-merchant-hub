@@ -41,7 +41,7 @@ const navigationItems = [
   },
   {
     title: "Tenants & Users",
-    url: "/users",
+    url: "/admin",
     icon: Users,
   },
   {
