@@ -13,7 +13,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from "../../context/AuthContext";
 
 interface AppHeaderProps {
   isDarkMode: boolean;
@@ -21,7 +21,7 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ isDarkMode, toggleDarkMode }: AppHeaderProps) {
-  const { user, logout } = useAuth(); // 👈 get current user + logout
+  const { user, signOut } = useAuth(); // 👈 get current user + logout
 
   return (
     <header className="h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -95,7 +95,7 @@ export function AppHeader({ isDarkMode, toggleDarkMode }: AppHeaderProps) {
               <DropdownMenuItem>Support</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={logout} // 👈 logout from AuthProvider
+                onClick={signOut} // 👈 logout from AuthProvider
                 className="text-destructive cursor-pointer"
               >
                 <LogOut className="mr-2 h-4 w-4" />

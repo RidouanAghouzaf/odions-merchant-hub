@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from "../../context/AuthContext";
 
 import {
   LayoutDashboard,
@@ -36,7 +36,7 @@ import AiIntelligence from "@/pages/AiIntelligence";
 const navigationItems = [
   {
     title: "Dashboard",
-    url: "/",
+    url: "/dashboard",
     icon: LayoutDashboard,
   },
   {
@@ -91,7 +91,7 @@ export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
   const isCollapsed = state === "collapsed";
-  const {logout} =useAuth();
+  const {signOut} =useAuth();
 
   const isActive = (path: string) => {
     if (path === "/") return currentPath === "/";
